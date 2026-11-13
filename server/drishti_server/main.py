@@ -7,12 +7,12 @@ from typing import Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
-from .db import SessionLocal, SpanRow, init_db, engine
-from .schemas import IngestRequest, TraceSummary
+from .db import ScoreRow, SessionLocal, SpanRow, init_db, engine
+from .schemas import IngestRequest, ScoreIn, ScoreOut, TraceSummary
 
 API_KEY = os.environ.get("DRISHTI_API_KEY", "dev-key")
 
@@ -211,6 +211,67 @@ def stats(db: Session = Depends(get_db)) -> dict:
                 "cost_usd": round(cu, 6),
             }
             for (m, c, it, ot, cu) in by_model
+        ],
+    }
+
+
+@app.post("/api/v1/scores", dependencies=[Depends(require_api_key)])
+def create_score(score: ScoreIn, db: Session = Depends(get_db)) -> dict:
+    import time
+    import uuid
+
+    exists = db.execute(
+        select(SpanRow.span_id).where(SpanRow.trace_id == score.trace_id).limit(1)
+    ).first()
+    if not exists:
+        raise HTTPException(status_code=404, detail="trace not found")
+    row = ScoreRow(
+        score_id=uuid.uuid4().hex,
+        trace_id=score.trace_id,
+        name=score.name,
+        value=score.value,
+        source=score.source,
+        comment=score.comment,
+        model=score.model,
+        created_at=time.time() * 1000.0,
+    )
+    db.add(row)
+    db.commit()
+    return {"score_id": row.score_id}
+
+
+@app.get("/api/v1/traces/{trace_id}/scores", dependencies=[Depends(require_api_key)])
+def trace_scores(trace_id: str, db: Session = Depends(get_db)) -> list[ScoreOut]:
+    rows = (
+        db.execute(select(ScoreRow).where(ScoreRow.trace_id == trace_id).order_by(ScoreRow.created_at))
+        .scalars()
+        .all()
+    )
+    return [
+        ScoreOut(
+            score_id=r.score_id, trace_id=r.trace_id, name=r.name, value=r.value,
+            source=r.source, comment=r.comment, model=r.model, created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+@app.get("/api/v1/scores/summary", dependencies=[Depends(require_api_key)])
+def scores_summary(db: Session = Depends(get_db)) -> dict:
+    rows = db.execute(
+        select(
+            ScoreRow.name,
+            func.count(ScoreRow.score_id),
+            func.avg(ScoreRow.value),
+            func.sum(case((ScoreRow.value < 0.5, 1), else_=0)),
+        ).group_by(ScoreRow.name)
+    ).all()
+    scored_traces = db.execute(select(func.count(func.distinct(ScoreRow.trace_id)))).scalar() or 0
+    return {
+        "scored_traces": scored_traces,
+        "by_name": [
+            {"name": n, "count": c, "avg": round(a, 4) if a is not None else None, "low_count": int(lo or 0)}
+            for (n, c, a, lo) in rows
         ],
     }
 

@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, fmtCost, fmtInt, Stats } from "@/lib/api";
+import { api, fmtCost, fmtInt, ScoresSummary, Stats } from "@/lib/api";
 
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [evals, setEvals] = useState<ScoresSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
     api.stats().then(setStats).catch((e) => setError(String(e)));
+    api.scoresSummary().then(setEvals).catch(() => {});
   };
   useEffect(load, []);
 
@@ -47,6 +49,37 @@ export default function Dashboard() {
           <div className="value">{stats.cost_usd === 0 ? "$0" : `$${stats.cost_usd.toFixed(4)}`}</div>
         </div>
       </div>
+
+      {evals && evals.by_name.length > 0 && (
+        <div className="card">
+          <h2>Evals</h2>
+          <div className="muted" style={{ marginBottom: 10 }}>
+            {fmtInt(evals.scored_traces)} trace{evals.scored_traces === 1 ? "" : "s"} scored
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Score</th>
+                <th className="num">Traces</th>
+                <th className="num">Average</th>
+                <th className="num">Low (&lt;0.5)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {evals.by_name.map((s) => (
+                <tr key={s.name}>
+                  <td className="mono">{s.name}</td>
+                  <td className="num">{fmtInt(s.count)}</td>
+                  <td className="num" style={{ color: (s.avg ?? 1) < 0.5 ? "var(--error)" : undefined }}>
+                    {s.avg != null ? s.avg.toFixed(2) : "–"}
+                  </td>
+                  <td className="num">{fmtInt(s.low_count)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="card">
         <h2>Cost by model</h2>

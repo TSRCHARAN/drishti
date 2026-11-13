@@ -28,7 +28,7 @@ def mock_llm(prompt: str) -> str:
         model="claude-sonnet-5-5",
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        cost_usd=(input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000,
+        cost_usd=(input_tokens * 2.0 + output_tokens * 10.0) / 1_000_000,
     )
     return f"[mock answer to: {prompt[:60]}...]"
 

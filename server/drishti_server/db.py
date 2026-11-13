@@ -43,5 +43,18 @@ class SpanRow(Base):
     __table_args__ = (Index("ix_spans_trace_start", "trace_id", "start_time"),)
 
 
+class ScoreRow(Base):
+    __tablename__ = "scores"
+
+    score_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    trace_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(64), index=True)  # e.g. "task_completion", "human_review"
+    value: Mapped[float] = mapped_column(Float)  # 0.0–1.0
+    source: Mapped[str] = mapped_column(String(16), default="llm_judge")  # "llm_judge" | "human"
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)  # judge reasoning / human note
+    model: Mapped[str | None] = mapped_column(String(128), nullable=True)  # judge model, if llm_judge
+    created_at: Mapped[float] = mapped_column(Float, index=True)  # epoch ms
+
+
 def init_db() -> None:
     Base.metadata.create_all(engine)

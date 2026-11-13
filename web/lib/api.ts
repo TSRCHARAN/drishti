@@ -68,10 +68,40 @@ export interface Stats {
   }[];
 }
 
+export interface Score {
+  score_id: string;
+  trace_id: string;
+  name: string;
+  value: number;
+  source: "llm_judge" | "human";
+  comment: string | null;
+  model: string | null;
+  created_at: number;
+}
+
+export interface ScoresSummary {
+  scored_traces: number;
+  by_name: { name: string; count: number; avg: number | null; low_count: number }[];
+}
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${HOST}${path}`, {
+    method: "POST",
+    headers: { "x-api-key": API_KEY, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export const api = {
   stats: () => get<Stats>("/api/v1/stats"),
   traces: (limit = 100) => get<TraceSummary[]>(`/api/v1/traces?limit=${limit}`),
   trace: (traceId: string) => get<TraceDetail>(`/api/v1/traces/${traceId}`),
+  traceScores: (traceId: string) => get<Score[]>(`/api/v1/traces/${traceId}/scores`),
+  scoresSummary: () => get<ScoresSummary>("/api/v1/scores/summary"),
+  postScore: (score: { trace_id: string; name: string; value: number; source: string; comment?: string }) =>
+    post<{ score_id: string }>("/api/v1/scores", score),
 };
 
 // ---- formatting helpers ----

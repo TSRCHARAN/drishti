@@ -18,9 +18,11 @@ dependencies = [
 
 [project.optional-dependencies]
 postgres = ["psycopg2-binary>=2.9"]
+evals = ["anthropic>=0.30"]
 
 [project.scripts]
 drishti-server = "drishti_server.main:run"
+drishti-eval = "drishti_server.evals:main"
 
 [tool.setuptools.packages.find]
 include = ["drishti_server*"]

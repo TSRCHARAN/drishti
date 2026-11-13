@@ -2,7 +2,17 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { api, fmtCost, fmtInt, fmtMs, fmtTime, Span, TraceDetail } from "@/lib/api";
+import { api, fmtCost, fmtInt, fmtMs, fmtTime, Score, Span, TraceDetail } from "@/lib/api";
+
+function ScoreChip({ score }: { score: Score }) {
+  const color = score.value >= 0.7 ? "var(--series-llm)" : score.value < 0.5 ? "var(--error)" : "var(--series-tool)";
+  return (
+    <span className="badge" title={score.comment ?? ""}>
+      <span className="swatch" style={{ background: color }} />
+      {score.name} {score.value.toFixed(2)} · {score.source === "human" ? "human" : score.model ?? "judge"}
+    </span>
+  );
+}
 
 interface Row {
   span: Span;
@@ -35,12 +45,23 @@ function buildRows(spans: Span[]): Row[] {
 export default function TracePage() {
   const { traceId } = useParams<{ traceId: string }>();
   const [trace, setTrace] = useState<TraceDetail | null>(null);
+  const [scores, setScores] = useState<Score[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [note, setNote] = useState("");
 
   useEffect(() => {
     api.trace(traceId).then(setTrace).catch((e) => setError(String(e)));
+    api.traceScores(traceId).then(setScores).catch(() => {});
   }, [traceId]);
+
+  const annotate = (value: number) => {
+    api
+      .postScore({ trace_id: traceId, name: "human_review", value, source: "human", comment: note || undefined })
+      .then(() => api.traceScores(traceId).then(setScores))
+      .catch((e) => setError(String(e)));
+    setNote("");
+  };
 
   const rows = useMemo(() => (trace ? buildRows(trace.spans) : []), [trace]);
 
@@ -64,6 +85,19 @@ export default function TracePage() {
         {root && fmtTime(root.start_time)} · {fmtMs(total)} · {trace.spans.length} spans ·{" "}
         {fmtCost(totalCost)}
         {root?.session_id && <> · session <code>{root.session_id}</code></>}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+        {scores.map((s) => <ScoreChip key={s.score_id} score={s} />)}
+        <input
+          className="btn"
+          style={{ width: 200 }}
+          placeholder="annotation note (optional)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <button className="btn" title="Mark this run as good" onClick={() => annotate(1)}>👍 good</button>
+        <button className="btn" title="Mark this run as bad" onClick={() => annotate(0)}>👎 bad</button>
       </div>
 
       <div className="card wf">

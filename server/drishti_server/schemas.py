@@ -30,6 +30,26 @@ class IngestRequest(BaseModel):
     spans: list[SpanIn] = Field(max_length=1000)
 
 
+class ScoreIn(BaseModel):
+    trace_id: str = Field(max_length=64)
+    name: str = Field(max_length=64)
+    value: float = Field(ge=0.0, le=1.0)
+    source: str = "human"
+    comment: Optional[str] = None
+    model: Optional[str] = None
+
+
+class ScoreOut(BaseModel):
+    score_id: str
+    trace_id: str
+    name: str
+    value: float
+    source: str
+    comment: Optional[str]
+    model: Optional[str]
+    created_at: float
+
+
 class TraceSummary(BaseModel):
     trace_id: str
     name: str                     # root span name
