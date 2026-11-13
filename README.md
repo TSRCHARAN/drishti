@@ -2,6 +2,7 @@
 
 **Open-source observability for AI agents.** Traces, costs, and evals for LLM applications — self-hosted, in under 2 minutes.
 
+[![CI](https://github.com/TSRCHARAN/veekshana/actions/workflows/ci.yml/badge.svg)](https://github.com/TSRCHARAN/veekshana/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab.svg)](sdk-python/)
 [![OTLP compatible](https://img.shields.io/badge/OpenTelemetry-OTLP%20ingest-7b61c1.svg)](docs/GUIDE.md#33-already-on-opentelemetry-skip-the-sdk)

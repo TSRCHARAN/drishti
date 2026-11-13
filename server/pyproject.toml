@@ -9,6 +9,15 @@ description = "Veekshana server: ingestion + query API for AI agent observabilit
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
+authors = [{ name = "Veekshana contributors" }]
+keywords = ["observability", "llm", "ai-agents", "tracing", "opentelemetry", "evals"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Monitoring",
+]
 dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
@@ -17,6 +26,12 @@ dependencies = [
     "opentelemetry-proto>=1.25",
     "protobuf>=4.25",
 ]
+
+[project.urls]
+Homepage = "https://github.com/TSRCHARAN/veekshana"
+Repository = "https://github.com/TSRCHARAN/veekshana"
+Documentation = "https://github.com/TSRCHARAN/veekshana/blob/main/docs/GUIDE.md"
+Issues = "https://github.com/TSRCHARAN/veekshana/issues"
 
 [project.optional-dependencies]
 postgres = ["psycopg2-binary>=2.9"]
