@@ -48,10 +48,14 @@ Anthropic and OpenAI clients are auto-instrumented: every `messages.create` / `c
 ### 3. See your traces
 
 ```bash
-curl http://localhost:8787/api/v1/traces -H "x-api-key: dev-key"
+cd web
+npm install
+npm run dev
 ```
 
-(Web UI coming in Phase 2.)
+Open [http://localhost:3000](http://localhost:3000): dashboard with cost/token stats, traces list, and a click-through trace waterfall with per-span latency, cost, and input/output inspection.
+
+Prefer raw JSON? `curl http://localhost:8787/api/v1/traces -H "x-api-key: dev-key"`
 
 ## Repository layout
 
@@ -69,8 +73,8 @@ examples/     Instrumented demo agents
 - [x] Python SDK: `@observe`, trace context, batched ingestion
 - [x] Anthropic auto-instrumentation + cost tracking
 - [x] FastAPI ingestion + query API
+- [x] Web UI: trace waterfall, traces list, cost dashboard
 - [ ] OpenAI auto-instrumentation
-- [ ] Web UI: trace waterfall, sessions, cost dashboard
 - [ ] Evals v1: LLM-as-judge on sampled traces, manual annotation
 - [ ] TypeScript SDK
 - [ ] OpenTelemetry export compatibility

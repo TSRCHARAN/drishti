@@ -6,6 +6,7 @@ import os
 from typing import Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
@@ -16,6 +17,16 @@ from .schemas import IngestRequest, TraceSummary
 API_KEY = os.environ.get("DRISHTI_API_KEY", "dev-key")
 
 app = FastAPI(title="Drishti", version="0.1.0")
+
+# The web UI (localhost:3000 in dev) calls this API from the browser.
+# Self-hosters can widen/narrow this with DRISHTI_CORS_ORIGINS (comma-separated).
+_cors_origins = os.environ.get("DRISHTI_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _cors_origins.split(",") if o.strip()],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
