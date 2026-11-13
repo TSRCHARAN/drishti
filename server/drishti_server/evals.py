@@ -45,6 +45,15 @@ Scoring guide:
 Respond with ONLY a JSON object, no other text:
 {"score": <float 0-1>, "reasoning": "<one or two sentences>"}"""
 
+CRITERIA_TEMPLATE = """
+
+The user has described what this agent is SUPPOSED to do. Judge task completion
+against this description — an output that ignores it scores low even if fluent:
+
+<user_criteria>
+{criteria}
+</user_criteria>"""
+
 
 def _trace_digest(spans: list[SpanRow]) -> str:
     """Compact textual rendering of a trace for the judge."""
@@ -79,14 +88,15 @@ def _mock_judge(digest: str) -> dict:
     return {"score": round(score, 2), "reasoning": reasoning}
 
 
-def _llm_judge(digest: str) -> dict:
+def _llm_judge(digest: str, criteria: str | None = None) -> dict:
     from anthropic import Anthropic
 
+    system = JUDGE_SYSTEM + (CRITERIA_TEMPLATE.format(criteria=criteria) if criteria else "")
     client = Anthropic()
     response = client.messages.create(
         model=JUDGE_MODEL,
         max_tokens=2000,
-        system=JUDGE_SYSTEM,
+        system=system,
         messages=[{"role": "user", "content": digest}],
     )
     if response.stop_reason == "refusal":
@@ -113,7 +123,8 @@ def _have_anthropic_credentials() -> bool:
     return os.path.exists(os.path.expanduser("~/.config/anthropic"))
 
 
-def run_evals(limit: int = 20, mock: bool | None = None) -> None:
+def run_evals(limit: int = 20, mock: bool | None = None, criteria: str | None = None) -> None:
+    criteria = criteria or os.environ.get("DRISHTI_EVAL_CRITERIA") or None
     init_db()
     db = SessionLocal()
     try:
@@ -140,7 +151,7 @@ def run_evals(limit: int = 20, mock: bool | None = None) -> None:
             spans = db.execute(select(SpanRow).where(SpanRow.trace_id == tid)).scalars().all()
             digest = _trace_digest(spans)
             try:
-                verdict = _mock_judge(digest) if use_mock else _llm_judge(digest)
+                verdict = _mock_judge(digest) if use_mock else _llm_judge(digest, criteria)
             except Exception as exc:
                 print(f"  {tid[:8]}… judge failed: {exc}")
                 continue
@@ -148,6 +159,7 @@ def run_evals(limit: int = 20, mock: bool | None = None) -> None:
                 ScoreRow(
                     score_id=uuid.uuid4().hex,
                     trace_id=tid,
+                    project_id=spans[0].project_id if spans else "default",
                     name=SCORE_NAME,
                     value=verdict["score"],
                     source="llm_judge",
@@ -172,8 +184,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Drishti evals: LLM-as-judge trace scoring")
     parser.add_argument("--limit", type=int, default=20, help="max unscored traces to score")
     parser.add_argument("--mock", action="store_true", help="force the deterministic mock judge")
+    parser.add_argument(
+        "--criteria",
+        help="describe what the agent is supposed to do; the judge scores against it "
+        "(also: DRISHTI_EVAL_CRITERIA env var)",
+    )
     args = parser.parse_args()
-    run_evals(limit=args.limit, mock=True if args.mock else None)
+    run_evals(limit=args.limit, mock=True if args.mock else None, criteria=args.criteria)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,26 @@ from .db import ScoreRow, SessionLocal, SpanRow, init_db, engine
 from .otlp import parse_otlp_json, parse_otlp_protobuf
 from .schemas import IngestRequest, ScoreIn, ScoreOut, SpanIn, TraceSummary
 
-API_KEY = os.environ.get("DRISHTI_API_KEY", "dev-key")
+def _parse_api_keys() -> dict[str, str]:
+    """Per-project API keys (open-core groundwork for multi-tenancy).
+
+    DRISHTI_API_KEYS="key-a:project-a,key-b:project-b"  → key→project map
+    Falls back to DRISHTI_API_KEY (default "dev-key") mapped to project "default",
+    so single-team self-hosting needs no configuration at all.
+    """
+    keys: dict[str, str] = {}
+    for part in os.environ.get("DRISHTI_API_KEYS", "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        key, _, project = part.partition(":")
+        keys[key.strip()] = project.strip() or "default"
+    if not keys:
+        keys[os.environ.get("DRISHTI_API_KEY", "dev-key")] = "default"
+    return keys
+
+
+API_KEYS = _parse_api_keys()
 
 app = FastAPI(title="Drishti", version="0.1.0")
 
@@ -43,9 +62,13 @@ def get_db():
         db.close()
 
 
-def require_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
-    if x_api_key != API_KEY:
+def auth_project(x_api_key: Optional[str] = Header(default=None)) -> str:
+    """Authenticate and resolve the key's project. All reads and writes are
+    scoped to that project."""
+    project = API_KEYS.get(x_api_key or "")
+    if project is None:
         raise HTTPException(status_code=401, detail="invalid or missing x-api-key")
+    return project
 
 
 @app.get("/health")
@@ -53,11 +76,12 @@ def health() -> dict:
     return {"status": "ok", "service": "drishti", "version": "0.1.0"}
 
 
-def _insert_spans(db: Session, spans: list[SpanIn]) -> int:
+def _insert_spans(db: Session, spans: list[SpanIn], project: str) -> int:
     rows = [
         {
             "span_id": s.span_id,
             "trace_id": s.trace_id,
+            "project_id": project,
             "parent_span_id": s.parent_span_id,
             "name": s.name,
             "span_type": s.span_type,
@@ -88,13 +112,13 @@ def _insert_spans(db: Session, spans: list[SpanIn]) -> int:
     return len(rows)
 
 
-@app.post("/api/v1/ingest", dependencies=[Depends(require_api_key)])
-def ingest(req: IngestRequest, db: Session = Depends(get_db)) -> dict:
-    return {"accepted": _insert_spans(db, req.spans)}
+@app.post("/api/v1/ingest")
+def ingest(req: IngestRequest, db: Session = Depends(get_db), project: str = Depends(auth_project)) -> dict:
+    return {"accepted": _insert_spans(db, req.spans, project)}
 
 
-@app.post("/v1/traces", dependencies=[Depends(require_api_key)])
-async def otlp_traces(request: Request, db: Session = Depends(get_db)) -> dict:
+@app.post("/v1/traces")
+async def otlp_traces(request: Request, db: Session = Depends(get_db), project: str = Depends(auth_project)) -> dict:
     """OTLP/HTTP trace ingest (protobuf or JSON). Point any OpenTelemetry
     exporter here: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://<host>/v1/traces
     with OTEL_EXPORTER_OTLP_TRACES_HEADERS=x-api-key=<key>."""
@@ -108,19 +132,21 @@ async def otlp_traces(request: Request, db: Session = Depends(get_db)) -> dict:
         spans = [SpanIn(**d) for d in span_dicts]
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"could not parse OTLP payload: {exc}")
-    _insert_spans(db, spans)
+    _insert_spans(db, spans, project)
     return {"partialSuccess": {}}
 
 
-@app.get("/api/v1/traces", dependencies=[Depends(require_api_key)])
+@app.get("/api/v1/traces")
 def list_traces(
     limit: int = Query(default=50, le=500),
     session_id: Optional[str] = None,
     db: Session = Depends(get_db),
+    project: str = Depends(auth_project),
 ) -> list[TraceSummary]:
     # Find the most recent trace ids first.
     trace_ids_q = (
         select(SpanRow.trace_id, func.min(SpanRow.start_time).label("t0"))
+        .where(SpanRow.project_id == project)
         .group_by(SpanRow.trace_id)
         .order_by(func.min(SpanRow.start_time).desc())
         .limit(limit)
@@ -131,7 +157,13 @@ def list_traces(
     if not trace_ids:
         return []
 
-    spans = db.execute(select(SpanRow).where(SpanRow.trace_id.in_(trace_ids))).scalars().all()
+    spans = (
+        db.execute(
+            select(SpanRow).where(SpanRow.trace_id.in_(trace_ids), SpanRow.project_id == project)
+        )
+        .scalars()
+        .all()
+    )
 
     by_trace: dict[str, list[SpanRow]] = {}
     for s in spans:
@@ -163,10 +195,14 @@ def list_traces(
     return summaries
 
 
-@app.get("/api/v1/traces/{trace_id}", dependencies=[Depends(require_api_key)])
-def get_trace(trace_id: str, db: Session = Depends(get_db)) -> dict:
+@app.get("/api/v1/traces/{trace_id}")
+def get_trace(trace_id: str, db: Session = Depends(get_db), project: str = Depends(auth_project)) -> dict:
     spans = (
-        db.execute(select(SpanRow).where(SpanRow.trace_id == trace_id).order_by(SpanRow.start_time))
+        db.execute(
+            select(SpanRow)
+            .where(SpanRow.trace_id == trace_id, SpanRow.project_id == project)
+            .order_by(SpanRow.start_time)
+        )
         .scalars()
         .all()
     )
@@ -198,16 +234,19 @@ def get_trace(trace_id: str, db: Session = Depends(get_db)) -> dict:
     }
 
 
-@app.get("/api/v1/stats", dependencies=[Depends(require_api_key)])
-def stats(db: Session = Depends(get_db)) -> dict:
-    total_spans = db.execute(select(func.count(SpanRow.span_id))).scalar() or 0
-    total_traces = db.execute(select(func.count(func.distinct(SpanRow.trace_id)))).scalar() or 0
+@app.get("/api/v1/stats")
+def stats(db: Session = Depends(get_db), project: str = Depends(auth_project)) -> dict:
+    in_project = SpanRow.project_id == project
+    total_spans = db.execute(select(func.count(SpanRow.span_id)).where(in_project)).scalar() or 0
+    total_traces = (
+        db.execute(select(func.count(func.distinct(SpanRow.trace_id))).where(in_project)).scalar() or 0
+    )
     totals = db.execute(
         select(
             func.coalesce(func.sum(SpanRow.input_tokens), 0),
             func.coalesce(func.sum(SpanRow.output_tokens), 0),
             func.coalesce(func.sum(SpanRow.cost_usd), 0.0),
-        )
+        ).where(in_project)
     ).one()
     by_model = db.execute(
         select(
@@ -217,7 +256,7 @@ def stats(db: Session = Depends(get_db)) -> dict:
             func.coalesce(func.sum(SpanRow.output_tokens), 0),
             func.coalesce(func.sum(SpanRow.cost_usd), 0.0),
         )
-        .where(SpanRow.model.is_not(None))
+        .where(SpanRow.model.is_not(None), in_project)
         .group_by(SpanRow.model)
     ).all()
     return {
@@ -239,19 +278,22 @@ def stats(db: Session = Depends(get_db)) -> dict:
     }
 
 
-@app.post("/api/v1/scores", dependencies=[Depends(require_api_key)])
-def create_score(score: ScoreIn, db: Session = Depends(get_db)) -> dict:
+@app.post("/api/v1/scores")
+def create_score(score: ScoreIn, db: Session = Depends(get_db), project: str = Depends(auth_project)) -> dict:
     import time
     import uuid
 
     exists = db.execute(
-        select(SpanRow.span_id).where(SpanRow.trace_id == score.trace_id).limit(1)
+        select(SpanRow.span_id)
+        .where(SpanRow.trace_id == score.trace_id, SpanRow.project_id == project)
+        .limit(1)
     ).first()
     if not exists:
         raise HTTPException(status_code=404, detail="trace not found")
     row = ScoreRow(
         score_id=uuid.uuid4().hex,
         trace_id=score.trace_id,
+        project_id=project,
         name=score.name,
         value=score.value,
         source=score.source,
@@ -264,10 +306,14 @@ def create_score(score: ScoreIn, db: Session = Depends(get_db)) -> dict:
     return {"score_id": row.score_id}
 
 
-@app.get("/api/v1/traces/{trace_id}/scores", dependencies=[Depends(require_api_key)])
-def trace_scores(trace_id: str, db: Session = Depends(get_db)) -> list[ScoreOut]:
+@app.get("/api/v1/traces/{trace_id}/scores")
+def trace_scores(trace_id: str, db: Session = Depends(get_db), project: str = Depends(auth_project)) -> list[ScoreOut]:
     rows = (
-        db.execute(select(ScoreRow).where(ScoreRow.trace_id == trace_id).order_by(ScoreRow.created_at))
+        db.execute(
+            select(ScoreRow)
+            .where(ScoreRow.trace_id == trace_id, ScoreRow.project_id == project)
+            .order_by(ScoreRow.created_at)
+        )
         .scalars()
         .all()
     )
@@ -280,17 +326,24 @@ def trace_scores(trace_id: str, db: Session = Depends(get_db)) -> list[ScoreOut]
     ]
 
 
-@app.get("/api/v1/scores/summary", dependencies=[Depends(require_api_key)])
-def scores_summary(db: Session = Depends(get_db)) -> dict:
+@app.get("/api/v1/scores/summary")
+def scores_summary(db: Session = Depends(get_db), project: str = Depends(auth_project)) -> dict:
     rows = db.execute(
         select(
             ScoreRow.name,
             func.count(ScoreRow.score_id),
             func.avg(ScoreRow.value),
             func.sum(case((ScoreRow.value < 0.5, 1), else_=0)),
-        ).group_by(ScoreRow.name)
+        )
+        .where(ScoreRow.project_id == project)
+        .group_by(ScoreRow.name)
     ).all()
-    scored_traces = db.execute(select(func.count(func.distinct(ScoreRow.trace_id)))).scalar() or 0
+    scored_traces = (
+        db.execute(
+            select(func.count(func.distinct(ScoreRow.trace_id))).where(ScoreRow.project_id == project)
+        ).scalar()
+        or 0
+    )
     return {
         "scored_traces": scored_traces,
         "by_name": [

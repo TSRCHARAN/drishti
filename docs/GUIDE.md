@@ -122,6 +122,25 @@ docker compose exec server drishti-eval --mock   # deterministic mock, no key
 
 The judge reads each unscored trace (task, final output, steps, errors) and writes a `task_completion` score (0–1) with one-line reasoning. Configure the judge model with `DRISHTI_EVAL_MODEL` (default `claude-opus-5-5`; `claude-haiku-5-5` is the budget option). Human annotations from the UI land in the same scores table as `human_review`.
 
+**Describe what your agent is supposed to do**, and the judge scores against *your* definition of correct, not a generic one:
+
+```bash
+drishti-eval --criteria "The agent drafts polite payment reminders in formal English, never threatens the customer, and always includes the exact overdue amount."
+# or: DRISHTI_EVAL_CRITERIA="..." drishti-eval
+```
+
+Keys: **you** bring the LLM for judging (your `ANTHROPIC_API_KEY`), or use `--mock` — Drishti itself needs no AI vendor account.
+
+### 3.5b Projects (multi-team groundwork)
+
+Every span and score belongs to a **project**. With no configuration, everything lands in the `default` project. To split teams or apps on one server, issue one API key per project:
+
+```bash
+DRISHTI_API_KEYS="agent-team-key:collections,bot-team-key:support" drishti-server
+```
+
+Each key sees only its own project's traces, stats, and scores — reads and writes are fully isolated, and databases created by older versions are migrated automatically. (This is the open-source groundwork the hosted multi-tenant cloud builds on.)
+
 ### 3.6 API reference (all under `x-api-key`)
 
 | Endpoint | Purpose |

@@ -25,6 +25,7 @@ class SpanRow(Base):
 
     span_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     trace_id: Mapped[str] = mapped_column(String(64), index=True)
+    project_id: Mapped[str] = mapped_column(String(64), default="default", index=True)
     parent_span_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     name: Mapped[str] = mapped_column(Text)
     span_type: Mapped[str] = mapped_column(String(16), default="span")
@@ -48,6 +49,7 @@ class ScoreRow(Base):
 
     score_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     trace_id: Mapped[str] = mapped_column(String(64), index=True)
+    project_id: Mapped[str] = mapped_column(String(64), default="default", index=True)
     name: Mapped[str] = mapped_column(String(64), index=True)  # e.g. "task_completion", "human_review"
     value: Mapped[float] = mapped_column(Float)  # 0.0–1.0
     source: Mapped[str] = mapped_column(String(16), default="llm_judge")  # "llm_judge" | "human"
@@ -58,3 +60,21 @@ class ScoreRow(Base):
 
 def init_db() -> None:
     Base.metadata.create_all(engine)
+    _migrate()
+
+
+def _migrate() -> None:
+    """Lightweight, idempotent column additions for databases created by
+    older versions (create_all never alters existing tables)."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table in ("spans", "scores"):
+            if table not in inspector.get_table_names():
+                continue
+            columns = {c["name"] for c in inspector.get_columns(table)}
+            if "project_id" not in columns:
+                conn.execute(text(
+                    f"ALTER TABLE {table} ADD COLUMN project_id VARCHAR(64) NOT NULL DEFAULT 'default'"
+                ))
