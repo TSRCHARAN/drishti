@@ -80,6 +80,10 @@ docker compose exec server drishti-eval --mock # deterministic mock judge, no ke
 
 Each trace gets a `task_completion` score with reasoning, shown on the dashboard and trace pages, where you can also annotate runs 👍/👎 by hand. Judge model: `DRISHTI_EVAL_MODEL` (default `claude-opus-5-5`).
 
+## Documentation
+
+**[The Complete Guide](docs/GUIDE.md)** — what Drishti is, component map, full usage (SDK, OTLP, UI, evals, API reference), how it works inside, and an honest deployment-readiness checklist.
+
 ## Repository layout
 
 ```
