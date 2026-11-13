@@ -2,9 +2,23 @@
 
 **Open-source observability for AI agents.** Traces, costs, and evals for LLM applications — self-hosted, in under 2 minutes.
 
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab.svg)](sdk-python/)
+[![OTLP compatible](https://img.shields.io/badge/OpenTelemetry-OTLP%20ingest-7b61c1.svg)](docs/GUIDE.md#33-already-on-opentelemetry-skip-the-sdk)
+
 > दृष्टि (*Drishti*) — Sanskrit for "sight". See what your agents are actually doing.
 
 > ⚠️ **Early development.** Drishti is a working codename; APIs will change. Star the repo to follow along.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/dashboard-dark.png">
+  <img alt="Drishti dashboard: traces, tokens, cost, eval scores, cost by model" src="docs/images/dashboard-light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/trace-dark.png">
+  <img alt="Trace waterfall with span detail: LLM and tool calls, latency, tokens, cost, input/output" src="docs/images/trace-light.png">
+</picture>
 
 ## Why Drishti?
 
@@ -80,6 +94,22 @@ docker compose exec server drishti-eval --mock # deterministic mock judge, no ke
 
 Each trace gets a `task_completion` score with reasoning, shown on the dashboard and trace pages, where you can also annotate runs 👍/👎 by hand. Judge model: `DRISHTI_EVAL_MODEL` (default `claude-opus-5-5`).
 
+**Describe what your agent is supposed to do**, and the judge scores against *your* definition of correct:
+
+```bash
+drishti-eval --criteria "Drafts polite payment reminders, never threatens, always includes the exact overdue amount."
+```
+
+The judge runs on **your** API key (any Claude model) — or the keyless mock judge. Drishti itself has no AI vendor dependency.
+
+### 5. Multiple teams, one server
+
+```bash
+DRISHTI_API_KEYS="agents-key:collections,bot-key:support" docker compose up
+```
+
+Each key sees only its own project's traces, stats, and scores. With no configuration, everything lands in a single `default` project.
+
 ## Documentation
 
 **[The Complete Guide](docs/GUIDE.md)** — what Drishti is, component map, full usage (SDK, OTLP, UI, evals, API reference), how it works inside, and an honest deployment-readiness checklist.
@@ -104,9 +134,15 @@ examples/     Instrumented demo agents
 - [x] Evals v1: LLM-as-judge on sampled traces, manual annotation
 - [x] OTLP ingest (OpenTelemetry GenAI semantic conventions, protobuf + JSON)
 - [x] OpenAI auto-instrumentation (covers OpenAI-compatible providers via base_url)
+- [x] Custom eval criteria (describe what your agent should do, in plain English)
+- [x] Per-project API keys (multi-team isolation on one server)
 - [ ] Streaming call capture (Anthropic + OpenAI)
 - [ ] TypeScript SDK
 - [ ] Gateway/proxy mode (zero-code logging)
+
+## Contributing
+
+Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The whole codebase is small enough to read in an evening; that's deliberate.
 
 ## License
 
