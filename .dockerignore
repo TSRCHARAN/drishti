@@ -1,0 +1,9 @@
+.git
+**/__pycache__
+**/*.egg-info
+**/.venv
+**/node_modules
+web/.next
+**/*.db
+.env
+docs

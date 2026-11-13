@@ -16,15 +16,26 @@ You shipped an AI agent. Now you need to know:
 
 ## Quickstart
 
-### 1. Run the server
+### 1. Run the stack
+
+```bash
+docker compose up
+```
+
+That's it: API at `http://localhost:8787`, web UI at `http://localhost:3000`, SQLite on a Docker volume (Postgres: see `docker-compose.yml`). Default API key is `dev-key` — override with `DRISHTI_API_KEY=... docker compose up --build`.
+
+<details>
+<summary>Without Docker</summary>
 
 ```bash
 cd server
-pip install -e .
+pip install -e . -e ../sdk-python
 drishti-server
 ```
 
-The server starts at `http://localhost:8787` with a local SQLite database. (Postgres: set `DRISHTI_DATABASE_URL`.)
+The server starts at `http://localhost:8787` with a local SQLite database. (Postgres: set `DRISHTI_DATABASE_URL`.) Then run the web UI from `web/` with `npm install && npm run dev`.
+
+</details>
 
 ### 2. Instrument your agent
 
@@ -56,23 +67,26 @@ Drishti accepts OTLP/HTTP (protobuf and JSON) and maps GenAI semantic convention
 
 ### 3. See your traces
 
-```bash
-cd web
-npm install
-npm run dev
-```
-
 Open [http://localhost:3000](http://localhost:3000): dashboard with cost/token stats, traces list, and a click-through trace waterfall with per-span latency, cost, and input/output inspection.
 
 Prefer raw JSON? `curl http://localhost:8787/api/v1/traces -H "x-api-key: dev-key"`
+
+### 4. Score your traces (evals)
+
+```bash
+docker compose exec server drishti-eval        # LLM-as-judge (set ANTHROPIC_API_KEY)
+docker compose exec server drishti-eval --mock # deterministic mock judge, no key needed
+```
+
+Each trace gets a `task_completion` score with reasoning, shown on the dashboard and trace pages, where you can also annotate runs 👍/👎 by hand. Judge model: `DRISHTI_EVAL_MODEL` (default `claude-opus-5-5`).
 
 ## Repository layout
 
 ```
 sdk-python/   Python SDK — @observe decorator, auto-instrumentation, batched exporter
 server/       FastAPI ingestion + query API (SQLite / Postgres)
-web/          Next.js trace viewer + cost dashboard (Phase 2)
-docker/       docker-compose for one-command self-hosting
+web/          Next.js trace viewer + cost dashboard
+docker/       Dockerfiles (compose file is at the repo root)
 docs/         Quickstart and SDK reference
 examples/     Instrumented demo agents
 ```
