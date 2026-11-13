@@ -43,7 +43,7 @@ def my_agent(question: str) -> str:
     ...
 ```
 
-Anthropic and OpenAI clients are auto-instrumented: every `messages.create` / `chat.completions.create` call is captured with model, tokens, cost, and latency — zero code changes.
+Anthropic and OpenAI clients are auto-instrumented: every `messages.create` / `chat.completions.create` / `responses.create` call is captured with model, tokens, cost, and latency — zero code changes. The OpenAI wrapper also covers every OpenAI-compatible provider used through the OpenAI SDK with a custom `base_url`: Groq, Together, Ollama, OpenRouter, DeepSeek, Mistral, Gemini's compat endpoint, and friends.
 
 **Already instrumented with OpenTelemetry** (OpenLLMetry, Phoenix, Langfuse v3, or your own GenAI spans)? Skip the SDK entirely — point your exporter at Drishti:
 
@@ -85,7 +85,8 @@ examples/     Instrumented demo agents
 - [x] Web UI: trace waterfall, traces list, cost dashboard
 - [x] Evals v1: LLM-as-judge on sampled traces, manual annotation
 - [x] OTLP ingest (OpenTelemetry GenAI semantic conventions, protobuf + JSON)
-- [ ] OpenAI auto-instrumentation
+- [x] OpenAI auto-instrumentation (covers OpenAI-compatible providers via base_url)
+- [ ] Streaming call capture (Anthropic + OpenAI)
 - [ ] TypeScript SDK
 - [ ] Gateway/proxy mode (zero-code logging)
 

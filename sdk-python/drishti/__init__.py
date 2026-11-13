@@ -54,9 +54,10 @@ def init(
     set_exporter(Exporter(host=host, api_key=api_key))
 
     if instrument:
-        from .instrumentation import instrument_anthropic
+        from .instrumentation import instrument_anthropic, instrument_openai
 
         instrument_anthropic()
+        instrument_openai()
 
 
 def flush() -> None:
