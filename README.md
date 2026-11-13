@@ -75,7 +75,8 @@ examples/     Instrumented demo agents
 - [x] FastAPI ingestion + query API
 - [x] Web UI: trace waterfall, traces list, cost dashboard
 - [ ] OpenAI auto-instrumentation
-- [ ] Evals v1: LLM-as-judge on sampled traces, manual annotation
+- [x] Evals v1: LLM-as-judge on sampled traces, manual annotation
+- [ ] OTLP ingest (OpenTelemetry GenAI semantic conventions)
 - [ ] TypeScript SDK
 - [ ] OpenTelemetry export compatibility
 
