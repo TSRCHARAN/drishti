@@ -19,7 +19,7 @@ out/
 # Data / local state
 *.db
 *.sqlite3
-drishti.db
+veekshana.db
 
 # Env & IDE
 .env

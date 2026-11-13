@@ -1,11 +1,11 @@
-"""Drishti — open-source observability for AI agents.
+"""Veekshana — open-source observability for AI agents.
 
 Usage:
-    import drishti
+    import veekshana
 
-    drishti.init(host="http://localhost:8787", api_key="dev-key")
+    veekshana.init(host="http://localhost:8787", api_key="dev-key")
 
-    @drishti.observe()
+    @veekshana.observe()
     def my_agent(question: str) -> str:
         ...
 """
@@ -34,7 +34,7 @@ __all__ = [
     "flush",
 ]
 
-logger = logging.getLogger("drishti")
+logger = logging.getLogger("veekshana")
 
 
 def init(
@@ -42,15 +42,15 @@ def init(
     api_key: Optional[str] = None,
     instrument: bool = True,
 ) -> None:
-    """Initialize Drishti.
+    """Initialize Veekshana.
 
     Args:
-        host: Drishti server URL. Defaults to $DRISHTI_HOST or http://localhost:8787.
-        api_key: Ingestion API key. Defaults to $DRISHTI_API_KEY or "dev-key".
+        host: Veekshana server URL. Defaults to $VEEKSHANA_HOST or http://localhost:8787.
+        api_key: Ingestion API key. Defaults to $VEEKSHANA_API_KEY or "dev-key".
         instrument: Auto-instrument installed LLM SDKs (anthropic, ...).
     """
-    host = host or os.environ.get("DRISHTI_HOST", "http://localhost:8787")
-    api_key = api_key or os.environ.get("DRISHTI_API_KEY", "dev-key")
+    host = host or os.environ.get("VEEKSHANA_HOST", "http://localhost:8787")
+    api_key = api_key or os.environ.get("VEEKSHANA_API_KEY", "dev-key")
     set_exporter(Exporter(host=host, api_key=api_key))
 
     if instrument:

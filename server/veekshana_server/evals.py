@@ -4,11 +4,11 @@ Reads recent unscored traces, asks a judge model "did the agent complete its
 task?", and writes a 0–1 task_completion score (with reasoning) per trace.
 
 Usage:
-    drishti-eval                 # score up to 20 recent unscored traces
-    drishti-eval --limit 5
-    drishti-eval --mock          # no API key needed: deterministic mock judge
+    veekshana-eval                 # score up to 20 recent unscored traces
+    veekshana-eval --limit 5
+    veekshana-eval --mock          # no API key needed: deterministic mock judge
 
-Judge model: $DRISHTI_EVAL_MODEL (default claude-opus-5-5) via the Anthropic SDK.
+Judge model: $VEEKSHANA_EVAL_MODEL (default claude-opus-5-5) via the Anthropic SDK.
 With no ANTHROPIC_API_KEY/credentials or --mock, a deterministic mock judge runs
 instead, so the pipeline works out of the box.
 """
@@ -27,7 +27,7 @@ from sqlalchemy import select
 
 from .db import ScoreRow, SessionLocal, SpanRow, init_db
 
-JUDGE_MODEL = os.environ.get("DRISHTI_EVAL_MODEL", "claude-opus-5-5")
+JUDGE_MODEL = os.environ.get("VEEKSHANA_EVAL_MODEL", "claude-opus-5-5")
 SCORE_NAME = "task_completion"
 
 JUDGE_SYSTEM = """You are an evaluation judge for AI agent traces. You are given one trace:
@@ -124,7 +124,7 @@ def _have_anthropic_credentials() -> bool:
 
 
 def run_evals(limit: int = 20, mock: bool | None = None, criteria: str | None = None) -> None:
-    criteria = criteria or os.environ.get("DRISHTI_EVAL_CRITERIA") or None
+    criteria = criteria or os.environ.get("VEEKSHANA_EVAL_CRITERIA") or None
     init_db()
     db = SessionLocal()
     try:
@@ -181,13 +181,13 @@ def func_min_start():
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Drishti evals: LLM-as-judge trace scoring")
+    parser = argparse.ArgumentParser(description="Veekshana evals: LLM-as-judge trace scoring")
     parser.add_argument("--limit", type=int, default=20, help="max unscored traces to score")
     parser.add_argument("--mock", action="store_true", help="force the deterministic mock judge")
     parser.add_argument(
         "--criteria",
         help="describe what the agent is supposed to do; the judge scores against it "
-        "(also: DRISHTI_EVAL_CRITERIA env var)",
+        "(also: VEEKSHANA_EVAL_CRITERIA env var)",
     )
     args = parser.parse_args()
     run_evals(limit=args.limit, mock=True if args.mock else None, criteria=args.criteria)

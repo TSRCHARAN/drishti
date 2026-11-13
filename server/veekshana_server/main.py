@@ -1,4 +1,4 @@
-"""Drishti server: ingestion + query API."""
+"""Veekshana server: ingestion + query API."""
 
 from __future__ import annotations
 
@@ -18,29 +18,29 @@ from .schemas import IngestRequest, ScoreIn, ScoreOut, SpanIn, TraceSummary
 def _parse_api_keys() -> dict[str, str]:
     """Per-project API keys (open-core groundwork for multi-tenancy).
 
-    DRISHTI_API_KEYS="key-a:project-a,key-b:project-b"  → key→project map
-    Falls back to DRISHTI_API_KEY (default "dev-key") mapped to project "default",
+    VEEKSHANA_API_KEYS="key-a:project-a,key-b:project-b"  → key→project map
+    Falls back to VEEKSHANA_API_KEY (default "dev-key") mapped to project "default",
     so single-team self-hosting needs no configuration at all.
     """
     keys: dict[str, str] = {}
-    for part in os.environ.get("DRISHTI_API_KEYS", "").split(","):
+    for part in os.environ.get("VEEKSHANA_API_KEYS", "").split(","):
         part = part.strip()
         if not part:
             continue
         key, _, project = part.partition(":")
         keys[key.strip()] = project.strip() or "default"
     if not keys:
-        keys[os.environ.get("DRISHTI_API_KEY", "dev-key")] = "default"
+        keys[os.environ.get("VEEKSHANA_API_KEY", "dev-key")] = "default"
     return keys
 
 
 API_KEYS = _parse_api_keys()
 
-app = FastAPI(title="Drishti", version="0.1.0")
+app = FastAPI(title="Veekshana", version="0.1.0")
 
 # The web UI (localhost:3000 in dev) calls this API from the browser.
-# Self-hosters can widen/narrow this with DRISHTI_CORS_ORIGINS (comma-separated).
-_cors_origins = os.environ.get("DRISHTI_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+# Self-hosters can widen/narrow this with VEEKSHANA_CORS_ORIGINS (comma-separated).
+_cors_origins = os.environ.get("VEEKSHANA_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in _cors_origins.split(",") if o.strip()],
@@ -73,7 +73,7 @@ def auth_project(x_api_key: Optional[str] = Header(default=None)) -> str:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "drishti", "version": "0.1.0"}
+    return {"status": "ok", "service": "veekshana", "version": "0.1.0"}
 
 
 def _insert_spans(db: Session, spans: list[SpanIn], project: str) -> int:
@@ -356,8 +356,8 @@ def scores_summary(db: Session = Depends(get_db), project: str = Depends(auth_pr
 def run() -> None:
     import uvicorn
 
-    host = os.environ.get("DRISHTI_SERVER_HOST", "127.0.0.1")
-    port = int(os.environ.get("DRISHTI_SERVER_PORT", "8787"))
+    host = os.environ.get("VEEKSHANA_SERVER_HOST", "127.0.0.1")
+    port = int(os.environ.get("VEEKSHANA_SERVER_PORT", "8787"))
     uvicorn.run(app, host=host, port=port)
 
 

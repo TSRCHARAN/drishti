@@ -1,6 +1,6 @@
 """Background batching exporter.
 
-Spans are queued in-process and shipped to the Drishti server in batches on a
+Spans are queued in-process and shipped to the Veekshana server in batches on a
 daemon thread, so instrumentation never blocks or crashes the host app.
 """
 
@@ -16,7 +16,7 @@ import httpx
 
 from .models import Span
 
-logger = logging.getLogger("drishti")
+logger = logging.getLogger("veekshana")
 
 BATCH_SIZE = 50
 FLUSH_INTERVAL_S = 2.0
@@ -30,7 +30,7 @@ class Exporter:
         self._queue: queue.Queue = queue.Queue(maxsize=QUEUE_MAX)
         self._client = httpx.Client(timeout=10.0)
         self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._run, name="drishti-exporter", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="veekshana-exporter", daemon=True)
         self._thread.start()
         atexit.register(self.shutdown)
 
@@ -38,7 +38,7 @@ class Exporter:
         try:
             self._queue.put_nowait(span.to_dict())
         except queue.Full:
-            logger.warning("drishti: span queue full, dropping span %s", span.span_id)
+            logger.warning("veekshana: span queue full, dropping span %s", span.span_id)
 
     def _drain(self, max_items: int) -> list:
         items = []
@@ -59,9 +59,9 @@ class Exporter:
                 headers={"x-api-key": self._api_key},
             )
             if resp.status_code >= 400:
-                logger.warning("drishti: ingest failed (%s): %s", resp.status_code, resp.text[:200])
+                logger.warning("veekshana: ingest failed (%s): %s", resp.status_code, resp.text[:200])
         except Exception as exc:  # never break the host app
-            logger.warning("drishti: ingest error: %s", exc)
+            logger.warning("veekshana: ingest error: %s", exc)
 
     def _run(self) -> None:
         while not self._stop.is_set():

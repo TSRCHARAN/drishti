@@ -1,6 +1,6 @@
-"""Agent instrumented with plain OpenTelemetry (no Drishti SDK), exporting
-straight to Drishti's OTLP endpoint — proves any OTel GenAI instrumentation
-(OpenLLMetry, Phoenix, Langfuse v3, ...) can point at Drishti unchanged.
+"""Agent instrumented with plain OpenTelemetry (no Veekshana SDK), exporting
+straight to Veekshana's OTLP endpoint — proves any OTel GenAI instrumentation
+(OpenLLMetry, Phoenix, Langfuse v3, ...) can point at Veekshana unchanged.
 
 Setup:
     pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
@@ -78,4 +78,4 @@ if __name__ == "__main__":
         except Exception as exc:
             print(f"  failed: {exc}")
     provider.shutdown()  # flush
-    print("\nDone. OTel traces shipped to Drishti → /v1/traces")
+    print("\nDone. OTel traces shipped to Veekshana → /v1/traces")

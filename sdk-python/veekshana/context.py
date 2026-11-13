@@ -8,8 +8,8 @@ from typing import Optional
 from .models import Span
 
 # Stack of active spans in the current execution context.
-_span_stack: contextvars.ContextVar[tuple] = contextvars.ContextVar("drishti_span_stack", default=())
-_session_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("drishti_session_id", default=None)
+_span_stack: contextvars.ContextVar[tuple] = contextvars.ContextVar("veekshana_span_stack", default=())
+_session_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("veekshana_session_id", default=None)
 
 
 def current_span() -> Optional[Span]:

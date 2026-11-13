@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "drishti-server"
+name = "veekshana-server"
 version = "0.1.0"
-description = "Drishti server: ingestion + query API for AI agent observability."
+description = "Veekshana server: ingestion + query API for AI agent observability."
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
@@ -23,8 +23,8 @@ postgres = ["psycopg2-binary>=2.9"]
 evals = ["anthropic>=0.30"]
 
 [project.scripts]
-drishti-server = "drishti_server.main:run"
-drishti-eval = "drishti_server.evals:main"
+veekshana-server = "veekshana_server.main:run"
+veekshana-eval = "veekshana_server.evals:main"
 
 [tool.setuptools.packages.find]
-include = ["drishti_server*"]
+include = ["veekshana_server*"]

@@ -12,7 +12,7 @@ from .. import context
 from ..cost import compute_cost
 from ..decorators import _finish_span, _start_span
 
-logger = logging.getLogger("drishti")
+logger = logging.getLogger("veekshana")
 
 _patched = False
 
@@ -89,5 +89,5 @@ def instrument_anthropic() -> bool:
     Messages.create = patched_create
     AsyncMessages.create = patched_async_create
     _patched = True
-    logger.info("drishti: anthropic SDK instrumented")
+    logger.info("veekshana: anthropic SDK instrumented")
     return True

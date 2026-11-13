@@ -13,7 +13,7 @@ import logging
 from ..cost import compute_cost
 from ..decorators import _finish_span, _start_span
 
-logger = logging.getLogger("drishti")
+logger = logging.getLogger("veekshana")
 
 _patched = False
 
@@ -125,5 +125,5 @@ def instrument_openai() -> bool:
         pass
 
     _patched = True
-    logger.info("drishti: openai SDK instrumented")
+    logger.info("veekshana: openai SDK instrumented")
     return True

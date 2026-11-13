@@ -17,7 +17,7 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="empty">
-        Could not reach the Drishti server.
+        Could not reach the Veekshana server.
         <div className="faint" style={{ marginTop: 6 }}>{error} — is it running on port 8787?</div>
       </div>
     );

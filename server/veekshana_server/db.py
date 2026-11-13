@@ -1,4 +1,4 @@
-"""Database layer: SQLite by default, Postgres via DRISHTI_DATABASE_URL."""
+"""Database layer: SQLite by default, Postgres via VEEKSHANA_DATABASE_URL."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import os
 from sqlalchemy import JSON, Float, Integer, String, Text, create_engine, Index
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
-DATABASE_URL = os.environ.get("DRISHTI_DATABASE_URL", "sqlite:///drishti.db")
+DATABASE_URL = os.environ.get("VEEKSHANA_DATABASE_URL", "sqlite:///veekshana.db")
 
 engine = create_engine(
     DATABASE_URL,

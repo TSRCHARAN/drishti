@@ -1,11 +1,11 @@
-"""OTLP/HTTP trace ingest: OpenTelemetry spans → Drishti spans.
+"""OTLP/HTTP trace ingest: OpenTelemetry spans → Veekshana spans.
 
 Accepts both OTLP encodings on POST /v1/traces:
   - application/x-protobuf  (the OTel SDK default for http exporters)
   - application/json        (OTLP/JSON)
 
 Maps GenAI semantic conventions (and the OpenLLMetry/Traceloop dialect) onto
-Drishti's span model, so existing instrumentation points here with only an
+Veekshana's span model, so existing instrumentation points here with only an
 endpoint + header change:
 
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:8787/v1/traces
@@ -18,7 +18,7 @@ import json
 from typing import Any, Optional
 
 try:  # reuse the SDK's pricing table when it is installed alongside the server
-    from drishti.cost import compute_cost
+    from veekshana.cost import compute_cost
 except ImportError:  # pragma: no cover
     def compute_cost(model, input_tokens, output_tokens):  # type: ignore
         return None
@@ -104,7 +104,7 @@ def map_otel_span(
     status_code: Any,
     status_message: str,
 ) -> dict:
-    """Map one decoded OTel span to a Drishti span dict (matches SpanIn)."""
+    """Map one decoded OTel span to a Veekshana span dict (matches SpanIn)."""
     model = _first(attrs, _MODEL_KEYS)
     input_tokens = _to_int(_first(attrs, _INPUT_TOKEN_KEYS))
     output_tokens = _to_int(_first(attrs, _OUTPUT_TOKEN_KEYS))
@@ -148,7 +148,7 @@ def map_otel_span(
 
 
 def parse_otlp_json(body: bytes) -> list[dict]:
-    """Parse an OTLP/JSON ExportTraceServiceRequest into Drishti span dicts."""
+    """Parse an OTLP/JSON ExportTraceServiceRequest into Veekshana span dicts."""
     payload = json.loads(body)
     out: list[dict] = []
     for rs in payload.get("resourceSpans", []):
@@ -173,7 +173,7 @@ def parse_otlp_json(body: bytes) -> list[dict]:
 
 
 def parse_otlp_protobuf(body: bytes) -> list[dict]:
-    """Parse an OTLP protobuf ExportTraceServiceRequest into Drishti span dicts."""
+    """Parse an OTLP protobuf ExportTraceServiceRequest into Veekshana span dicts."""
     from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 
     req = ExportTraceServiceRequest()

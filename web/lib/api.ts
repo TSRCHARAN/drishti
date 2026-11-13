@@ -1,10 +1,10 @@
-// API client for the Drishti server.
+// API client for the Veekshana server.
 // v1 is built for self-hosting: the browser talks to your own server directly,
 // so the host/key live in NEXT_PUBLIC_* vars (fine on localhost; the hosted
 // cloud version will proxy through a backend instead).
 
-const HOST = process.env.NEXT_PUBLIC_DRISHTI_HOST ?? "http://localhost:8787";
-const API_KEY = process.env.NEXT_PUBLIC_DRISHTI_API_KEY ?? "dev-key";
+const HOST = process.env.NEXT_PUBLIC_VEEKSHANA_HOST ?? "http://localhost:8787";
+const API_KEY = process.env.NEXT_PUBLIC_VEEKSHANA_API_KEY ?? "dev-key";
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${HOST}${path}`, {

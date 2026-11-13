@@ -3,7 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Drishti",
+  title: "Veekshana",
   description: "Open-source observability for AI agents",
 };
 
@@ -12,13 +12,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <nav className="nav">
-          <Link href="/" className="brand">🔭 Drishti</Link>
+          <Link href="/" className="brand">🔭 Veekshana</Link>
           <Link href="/" className="link">Dashboard</Link>
           <Link href="/traces" className="link">Traces</Link>
           <div className="spacer" />
           <a
             className="link faint"
-            href="https://github.com/TSRCHARAN/drishti"
+            href="https://github.com/TSRCHARAN/veekshana"
             target="_blank"
             rel="noreferrer"
           >

@@ -1,22 +1,22 @@
-# Contributing to Drishti
+# Contributing to Veekshana
 
-Thanks for your interest! Drishti is early and moving fast — that makes contributions both easier (lots of greenfield) and riskier (APIs still change). **Open an issue before starting anything bigger than a small fix** so we can save you wasted work.
+Thanks for your interest! Veekshana is early and moving fast — that makes contributions both easier (lots of greenfield) and riskier (APIs still change). **Open an issue before starting anything bigger than a small fix** so we can save you wasted work.
 
 ## Dev setup
 
 ```bash
-git clone https://github.com/TSRCHARAN/drishti && cd drishti
+git clone https://github.com/TSRCHARAN/veekshana && cd veekshana
 
 # Server + SDK (editable)
 pip install -e server -e sdk-python
-drishti-server                       # API on :8787, SQLite file drishti.db
+veekshana-server                       # API on :8787, SQLite file veekshana.db
 
 # Web UI
 cd web && npm install && npm run dev # UI on :3000
 
 # Seed demo data (no API keys needed)
 python examples/toy_agent.py
-drishti-eval --mock
+veekshana-eval --mock
 ```
 
 Or run everything with `docker compose up`.
@@ -26,7 +26,7 @@ Or run everything with `docker compose up`.
 | Path | What lives there |
 |---|---|
 | `sdk-python/` | `@observe`, context propagation, batching exporter, Anthropic/OpenAI auto-instrumentation |
-| `server/` | FastAPI ingest + query API, OTLP decoding, `drishti-eval` CLI, SQLAlchemy models |
+| `server/` | FastAPI ingest + query API, OTLP decoding, `veekshana-eval` CLI, SQLAlchemy models |
 | `web/` | Next.js UI — plain CSS design tokens in `app/globals.css`, **no Tailwind** |
 | `examples/` | Runnable demo agents (keyless) |
 | `docs/` | [The Complete Guide](docs/GUIDE.md) — read this first; it explains the internals |
@@ -41,8 +41,8 @@ Or run everything with `docker compose up`.
 
 ## Good first contributions
 
-- Pricing table entries for more providers/models (`sdk-python/drishti/cost.py`)
-- OTLP attribute aliases from other instrumentation libraries (`server/drishti_server/otlp.py`)
+- Pricing table entries for more providers/models (`sdk-python/veekshana/cost.py`)
+- OTLP attribute aliases from other instrumentation libraries (`server/veekshana_server/otlp.py`)
 - Streaming call capture (Anthropic/OpenAI `.stream()`) — tracked on the roadmap
 - Test coverage — the project predates its test suite; pytest scaffolding is welcome
 

@@ -22,7 +22,7 @@ export default function TracesPage() {
       <div className="card" style={{ padding: 8, overflowX: "auto" }}>
         {traces.length === 0 && (
           <div className="empty">
-            No traces yet. Instrument your agent with <code>@drishti.observe()</code> and run it.
+            No traces yet. Instrument your agent with <code>@veekshana.observe()</code> and run it.
           </div>
         )}
         {traces.length > 0 && (

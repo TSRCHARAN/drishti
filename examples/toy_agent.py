@@ -1,4 +1,4 @@
-"""Toy research agent instrumented with Drishti.
+"""Toy research agent instrumented with Veekshana.
 
 Runs with NO API keys: LLM calls are mocked, but each one is recorded as a real
 "llm" span with model, tokens, and cost — so you get realistic traces to explore.
@@ -12,19 +12,19 @@ from __future__ import annotations
 import random
 import time
 
-import drishti
+import veekshana
 
-drishti.init()  # defaults: http://localhost:8787, api_key "dev-key"
+veekshana.init()  # defaults: http://localhost:8787, api_key "dev-key"
 
 
 # --- Mock LLM (stands in for a real Anthropic call; real calls are auto-captured) ---
 
-@drishti.observe(name="llm.mock_claude", span_type="llm")
+@veekshana.observe(name="llm.mock_claude", span_type="llm")
 def mock_llm(prompt: str) -> str:
     time.sleep(random.uniform(0.05, 0.3))  # simulate latency
     input_tokens = len(prompt.split()) * 2
     output_tokens = random.randint(40, 400)
-    drishti.update_current_span(
+    veekshana.update_current_span(
         model="claude-sonnet-5-5",
         input_tokens=input_tokens,
         output_tokens=output_tokens,
@@ -35,13 +35,13 @@ def mock_llm(prompt: str) -> str:
 
 # --- Tools ---
 
-@drishti.observe(span_type="tool")
+@veekshana.observe(span_type="tool")
 def search_web(query: str) -> list[str]:
     time.sleep(random.uniform(0.02, 0.1))
     return [f"result {i} for '{query}'" for i in range(3)]
 
 
-@drishti.observe(span_type="tool")
+@veekshana.observe(span_type="tool")
 def fetch_invoice_data(customer_id: str) -> dict:
     time.sleep(random.uniform(0.02, 0.08))
     if random.random() < 0.15:
@@ -51,7 +51,7 @@ def fetch_invoice_data(customer_id: str) -> dict:
 
 # --- Agent ---
 
-@drishti.observe(name="collections_agent")
+@veekshana.observe(name="collections_agent")
 def run_agent(customer_id: str) -> str:
     plan = mock_llm(f"Plan the collections outreach for customer {customer_id}")
     try:
@@ -64,7 +64,7 @@ def run_agent(customer_id: str) -> str:
 
 
 if __name__ == "__main__":
-    drishti.set_session("demo-session-001")
+    veekshana.set_session("demo-session-001")
     for i in range(5):
         customer = f"CUST-{1000 + i}"
         print(f"→ running agent for {customer}")
@@ -73,5 +73,5 @@ if __name__ == "__main__":
             print(f"  {result[:80]}")
         except Exception as exc:
             print(f"  agent failed: {exc}")
-    drishti.flush()
-    print("\nDone. Traces shipped to Drishti → GET /api/v1/traces")
+    veekshana.flush()
+    print("\nDone. Traces shipped to Veekshana → GET /api/v1/traces")

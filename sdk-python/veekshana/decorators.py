@@ -97,7 +97,7 @@ def observe(
 def span(name: str, span_type: str = "span", input: Any = None):
     """Manual span context manager:
 
-        with drishti.span("retrieve-docs", input=query) as s:
+        with veekshana.span("retrieve-docs", input=query) as s:
             s.output = docs
     """
     sp, token = _start_span(name, span_type, input)
@@ -112,7 +112,7 @@ def span(name: str, span_type: str = "span", input: Any = None):
 def update_current_span(**fields: Any) -> None:
     """Attach data to the active span, e.g. model/usage/cost from inside an observed function:
 
-        drishti.update_current_span(model="claude-sonnet-5-5", input_tokens=812, output_tokens=102)
+        veekshana.update_current_span(model="claude-sonnet-5-5", input_tokens=812, output_tokens=102)
     """
     sp = context.current_span()
     if sp is None:

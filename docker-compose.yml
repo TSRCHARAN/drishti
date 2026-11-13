@@ -1,7 +1,7 @@
-# Drishti self-host: `docker compose up` → API on :8787, UI on :3000.
+# Veekshana self-host: `docker compose up` → API on :8787, UI on :3000.
 #
 # Change the API key for anything beyond local use:
-#   DRISHTI_API_KEY=your-secret docker compose up --build
+#   VEEKSHANA_API_KEY=your-secret docker compose up --build
 # (The web image bakes NEXT_PUBLIC_* at build time, so pass the same key there.)
 
 services:
@@ -12,13 +12,13 @@ services:
     ports:
       - "8787:8787"
     environment:
-      DRISHTI_API_KEY: ${DRISHTI_API_KEY:-dev-key}
+      VEEKSHANA_API_KEY: ${VEEKSHANA_API_KEY:-dev-key}
       # SQLite on a named volume by default. For Postgres, uncomment the
       # postgres service below and this URL:
-      # DRISHTI_DATABASE_URL: postgresql+psycopg2://drishti:drishti@postgres:5432/drishti
-      DRISHTI_CORS_ORIGINS: ${DRISHTI_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      # VEEKSHANA_DATABASE_URL: postgresql+psycopg2://veekshana:veekshana@postgres:5432/veekshana
+      VEEKSHANA_CORS_ORIGINS: ${VEEKSHANA_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     volumes:
-      - drishti-data:/data
+      - veekshana-data:/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8787/health')"]
       interval: 10s
@@ -30,24 +30,24 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
       args:
-        NEXT_PUBLIC_DRISHTI_HOST: ${DRISHTI_PUBLIC_HOST:-http://localhost:8787}
-        NEXT_PUBLIC_DRISHTI_API_KEY: ${DRISHTI_API_KEY:-dev-key}
+        NEXT_PUBLIC_VEEKSHANA_HOST: ${VEEKSHANA_PUBLIC_HOST:-http://localhost:8787}
+        NEXT_PUBLIC_VEEKSHANA_API_KEY: ${VEEKSHANA_API_KEY:-dev-key}
     ports:
       - "3000:3000"
     depends_on:
       server:
         condition: service_healthy
 
-  # Optional Postgres (uncomment, plus the DRISHTI_DATABASE_URL above):
+  # Optional Postgres (uncomment, plus the VEEKSHANA_DATABASE_URL above):
   # postgres:
   #   image: postgres:16-alpine
   #   environment:
-  #     POSTGRES_USER: drishti
-  #     POSTGRES_PASSWORD: drishti
-  #     POSTGRES_DB: drishti
+  #     POSTGRES_USER: veekshana
+  #     POSTGRES_PASSWORD: veekshana
+  #     POSTGRES_DB: veekshana
   #   volumes:
-  #     - drishti-pg:/var/lib/postgresql/data
+  #     - veekshana-pg:/var/lib/postgresql/data
 
 volumes:
-  drishti-data:
-  # drishti-pg:
+  veekshana-data:
+  # veekshana-pg:

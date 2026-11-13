@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "drishti"
+name = "veekshana"
 version = "0.1.0"
 description = "Open-source observability for AI agents: traces, costs, and evals."
 readme = "README.md"
@@ -18,4 +18,4 @@ anthropic = ["anthropic>=0.30"]
 openai = ["openai>=1.0"]
 
 [tool.setuptools.packages.find]
-include = ["drishti*"]
+include = ["veekshana*"]
