@@ -5,14 +5,15 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import case, func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from .db import ScoreRow, SessionLocal, SpanRow, init_db, engine
-from .schemas import IngestRequest, ScoreIn, ScoreOut, TraceSummary
+from .otlp import parse_otlp_json, parse_otlp_protobuf
+from .schemas import IngestRequest, ScoreIn, ScoreOut, SpanIn, TraceSummary
 
 API_KEY = os.environ.get("DRISHTI_API_KEY", "dev-key")
 
@@ -52,8 +53,7 @@ def health() -> dict:
     return {"status": "ok", "service": "drishti", "version": "0.1.0"}
 
 
-@app.post("/api/v1/ingest", dependencies=[Depends(require_api_key)])
-def ingest(req: IngestRequest, db: Session = Depends(get_db)) -> dict:
+def _insert_spans(db: Session, spans: list[SpanIn]) -> int:
     rows = [
         {
             "span_id": s.span_id,
@@ -73,7 +73,7 @@ def ingest(req: IngestRequest, db: Session = Depends(get_db)) -> dict:
             "cost_usd": s.cost_usd,
             "meta": s.metadata,
         }
-        for s in req.spans
+        for s in spans
     ]
     if rows:
         if engine.dialect.name == "sqlite":
@@ -85,7 +85,31 @@ def ingest(req: IngestRequest, db: Session = Depends(get_db)) -> dict:
             stmt = pg_insert(SpanRow).values(rows).on_conflict_do_nothing(index_elements=["span_id"])
             db.execute(stmt)
         db.commit()
-    return {"accepted": len(rows)}
+    return len(rows)
+
+
+@app.post("/api/v1/ingest", dependencies=[Depends(require_api_key)])
+def ingest(req: IngestRequest, db: Session = Depends(get_db)) -> dict:
+    return {"accepted": _insert_spans(db, req.spans)}
+
+
+@app.post("/v1/traces", dependencies=[Depends(require_api_key)])
+async def otlp_traces(request: Request, db: Session = Depends(get_db)) -> dict:
+    """OTLP/HTTP trace ingest (protobuf or JSON). Point any OpenTelemetry
+    exporter here: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://<host>/v1/traces
+    with OTEL_EXPORTER_OTLP_TRACES_HEADERS=x-api-key=<key>."""
+    body = await request.body()
+    content_type = request.headers.get("content-type", "")
+    try:
+        if "json" in content_type:
+            span_dicts = parse_otlp_json(body)
+        else:
+            span_dicts = parse_otlp_protobuf(body)
+        spans = [SpanIn(**d) for d in span_dicts]
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"could not parse OTLP payload: {exc}")
+    _insert_spans(db, spans)
+    return {"partialSuccess": {}}
 
 
 @app.get("/api/v1/traces", dependencies=[Depends(require_api_key)])

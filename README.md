@@ -45,6 +45,15 @@ def my_agent(question: str) -> str:
 
 Anthropic and OpenAI clients are auto-instrumented: every `messages.create` / `chat.completions.create` call is captured with model, tokens, cost, and latency — zero code changes.
 
+**Already instrumented with OpenTelemetry** (OpenLLMetry, Phoenix, Langfuse v3, or your own GenAI spans)? Skip the SDK entirely — point your exporter at Drishti:
+
+```bash
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:8787/v1/traces
+export OTEL_EXPORTER_OTLP_TRACES_HEADERS=x-api-key=dev-key
+```
+
+Drishti accepts OTLP/HTTP (protobuf and JSON) and maps GenAI semantic conventions — model, token usage, prompts/completions, tool calls, sessions, errors — automatically. See [examples/otel_agent.py](examples/otel_agent.py).
+
 ### 3. See your traces
 
 ```bash
@@ -74,11 +83,11 @@ examples/     Instrumented demo agents
 - [x] Anthropic auto-instrumentation + cost tracking
 - [x] FastAPI ingestion + query API
 - [x] Web UI: trace waterfall, traces list, cost dashboard
-- [ ] OpenAI auto-instrumentation
 - [x] Evals v1: LLM-as-judge on sampled traces, manual annotation
-- [ ] OTLP ingest (OpenTelemetry GenAI semantic conventions)
+- [x] OTLP ingest (OpenTelemetry GenAI semantic conventions, protobuf + JSON)
+- [ ] OpenAI auto-instrumentation
 - [ ] TypeScript SDK
-- [ ] OpenTelemetry export compatibility
+- [ ] Gateway/proxy mode (zero-code logging)
 
 ## License
 
