@@ -27,7 +27,12 @@ def push_span(span: Span) -> contextvars.Token:
 
 
 def pop_span(token: contextvars.Token) -> None:
-    _span_stack.reset(token)
+    try:
+        _span_stack.reset(token)
+    except (ValueError, LookupError):
+        # A streamed call's span can finish in a different execution context
+        # than the one that started it; there is nothing to pop there.
+        pass
 
 
 def set_session(session_id: Optional[str]) -> None:

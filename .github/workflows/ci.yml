@@ -13,8 +13,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Install packages
-        run: pip install -e sdk-python -e server
+        run: pip install -e sdk-python -e server anthropic openai
       - name: Import smoke test
         run: |
           python -c "
@@ -33,6 +36,12 @@ jobs:
           TRACES=$(curl -sf -H "x-api-key: dev-key" "http://127.0.0.1:8787/api/v1/traces" | python -c "import json,sys; print(len(json.load(sys.stdin)))")
           echo "traces ingested: $TRACES"
           test "$TRACES" -ge 5
+      - name: Offline end-to-end tests (mock providers, no keys)
+        run: |
+          python tests/test_streaming.py
+          python tests/test_gateway.py
+          cd sdk-ts && npm install && npm run build && cd ..
+          python tests/test_ts_sdk.py
       - name: Build + validate distributions
         run: |
           pip install build twine

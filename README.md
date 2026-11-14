@@ -73,6 +73,26 @@ def my_agent(question: str) -> str:
 
 Anthropic and OpenAI clients are auto-instrumented: every `messages.create` / `chat.completions.create` / `responses.create` call is captured with model, tokens, cost, and latency — zero code changes. The OpenAI wrapper also covers every OpenAI-compatible provider used through the OpenAI SDK with a custom `base_url`: Groq, Together, Ollama, OpenRouter, DeepSeek, Mistral, Gemini's compat endpoint, and friends.
 
+**Streaming is captured too**: `messages.stream(...)`, `stream=True`, and streamed chat completions all land as spans with text, token usage, and cost. On the official OpenAI endpoint, usage on streamed calls is requested automatically.
+
+**Using TypeScript/Node?**
+
+```ts
+import * as veekshana from "veekshana";   // sdk-ts/
+veekshana.init({ host: "http://localhost:8787", apiKey: "dev-key" });
+const openai = veekshana.instrumentOpenAI(new OpenAI());
+const myAgent = veekshana.observe(async function myAgent(q: string) { /* ... */ });
+```
+
+**Want zero code changes at all?** Use **gateway mode** — point your SDK's base URL at Veekshana and keep everything else the same; calls are forwarded to the vendor untouched (your vendor key passes through) and recorded on the way:
+
+```python
+client = Anthropic(base_url="http://localhost:8787/gateway/anthropic",
+                   default_headers={"x-veekshana-key": "dev-key"})
+client = OpenAI(base_url="http://localhost:8787/gateway/openai/v1",
+                default_headers={"x-veekshana-key": "dev-key"})
+```
+
 **Already instrumented with OpenTelemetry** (OpenLLMetry, Phoenix, Langfuse v3, or your own GenAI spans)? Skip the SDK entirely — point your exporter at Veekshana:
 
 ```bash
@@ -120,28 +140,15 @@ Each key sees only its own project's traces, stats, and scores. With no configur
 ## Repository layout
 
 ```
-sdk-python/   Python SDK — @observe decorator, auto-instrumentation, batched exporter
-server/       FastAPI ingestion + query API (SQLite / Postgres)
+sdk-python/   Python SDK — @observe, auto-instrumentation (incl. streaming), batched exporter
+sdk-ts/       TypeScript/Node SDK — observe(), instrumentOpenAI/Anthropic, zero deps
+server/       FastAPI ingestion + query API (SQLite / Postgres) + gateway mode + evals CLI
 web/          Next.js trace viewer + cost dashboard
 docker/       Dockerfiles (compose file is at the repo root)
-docs/         Quickstart and SDK reference
+docs/         The Complete Guide
 examples/     Instrumented demo agents
+tests/        Offline end-to-end tests (mock providers; no keys needed)
 ```
-
-## Roadmap
-
-- [x] Python SDK: `@observe`, trace context, batched ingestion
-- [x] Anthropic auto-instrumentation + cost tracking
-- [x] FastAPI ingestion + query API
-- [x] Web UI: trace waterfall, traces list, cost dashboard
-- [x] Evals v1: LLM-as-judge on sampled traces, manual annotation
-- [x] OTLP ingest (OpenTelemetry GenAI semantic conventions, protobuf + JSON)
-- [x] OpenAI auto-instrumentation (covers OpenAI-compatible providers via base_url)
-- [x] Custom eval criteria (describe what your agent should do, in plain English)
-- [x] Per-project API keys (multi-team isolation on one server)
-- [ ] Streaming call capture (Anthropic + OpenAI)
-- [ ] TypeScript SDK
-- [ ] Gateway/proxy mode (zero-code logging)
 
 ## Contributing
 

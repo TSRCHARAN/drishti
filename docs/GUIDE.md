@@ -107,6 +107,33 @@ export OTEL_EXPORTER_OTLP_TRACES_HEADERS=x-api-key=dev-key
 
 Veekshana accepts OTLP/HTTP in protobuf and JSON and maps the GenAI semantic conventions (model, token usage, prompt/completion, tool name, session, error status) onto its span model.
 
+### 3.3b Gateway mode — zero code changes
+
+Don't want an SDK at all? Point your provider client's base URL at Veekshana; it forwards every call (vendor key and all) to the real vendor untouched, and records model, tokens, cost, latency, and text on the way — streaming included:
+
+```python
+Anthropic(base_url="http://<veekshana>/gateway/anthropic",
+          default_headers={"x-veekshana-key": "<your veekshana key>"})
+OpenAI(base_url="http://<veekshana>/gateway/openai/v1",
+       default_headers={"x-veekshana-key": "<your veekshana key>"})
+```
+
+The `x-veekshana-key` header authenticates to Veekshana (and picks the project); the vendor credential passes through unchanged. Upstreams are overridable with `VEEKSHANA_GATEWAY_ANTHROPIC_URL` / `VEEKSHANA_GATEWAY_OPENAI_URL`. Trade-off vs the SDK: zero code, but no trace *tree* — each call is its own trace, with no parent agent/tool spans.
+
+### 3.3c TypeScript/Node SDK
+
+`sdk-ts/` ships the same model for Node ≥ 18, with zero runtime dependencies:
+
+```ts
+import * as veekshana from "veekshana";
+veekshana.init({ host: "http://localhost:8787", apiKey: "dev-key" });
+const openai = veekshana.instrumentOpenAI(new OpenAI());      // instance patch
+const anthropic = veekshana.instrumentAnthropic(new Anthropic());
+const agent = veekshana.observe(async function agent(q: string) { /* ... */ });
+```
+
+`observe()` nests via AsyncLocalStorage (outermost call = one trace); streamed and plain calls both land with usage and cost. Also: `setSession`, `updateCurrentSpan`, `flush`.
+
 ### 3.4 Read the UI
 
 - **Dashboard** — traces/spans/tokens/total-cost tiles, evals summary (average score, low-score count), cost-by-model bars, model usage table.
@@ -171,7 +198,9 @@ Each key sees only its own project's traces, stats, and scores — reads and wri
 
 **Never hurt the host app.** Spans go into a bounded in-process queue; a daemon thread flushes batches of 50 every 2 s over HTTP. Queue full → spans drop with a warning. Server down → warnings, not exceptions. `atexit` flushes on clean exit.
 
-**Auto-instrumentation.** `veekshana.init()` monkey-patches `Messages.create` (Anthropic) and `chat.completions.create` / `responses.create` (OpenAI), sync and async. Each call becomes an `llm` span carrying model, token usage, and computed cost. Because Groq, Together, Ollama, OpenRouter, DeepSeek, Mistral and others are used through the OpenAI SDK with a custom `base_url`, the one OpenAI wrapper covers them all.
+**Auto-instrumentation.** `veekshana.init()` monkey-patches `Messages.create`/`Messages.stream` (Anthropic) and `chat.completions.create` / `responses.create` (OpenAI), sync and async. Each call becomes an `llm` span carrying model, token usage, and computed cost. Because Groq, Together, Ollama, OpenRouter, DeepSeek, Mistral and others are used through the OpenAI SDK with a custom `base_url`, the one OpenAI wrapper covers them all.
+
+**Streaming capture.** A streamed call returns a transparent wrapper: events pass through to your code unchanged while an accumulator collects text deltas, model, and usage (Anthropic `message_start`/`message_delta`; OpenAI usage chunk — requested automatically on api.openai.com via `stream_options`). The span finishes when the stream is exhausted, closed, or errors, with duration covering the full stream. `messages.stream(...)` context managers read the SDK's own accumulated final message on exit, so usage there is exact.
 
 **Cost.** A pricing table (USD per 1M tokens, Anthropic rate card of 2026-11 + common OpenAI ids) with longest-match lookup, so dated ids like `claude-sonnet-5-5-20260101` and prefixed ids like `us.anthropic.claude-...` still resolve. Unknown model → cost `None`, never a wrong number.
 
@@ -190,19 +219,18 @@ Each key sees only its own project's traces, stats, and scores — reads and wri
 - Idempotent ingest (duplicate spans ignored), bounded queues, defensive SDK
 
 **Not yet** (needed before a public multi-tenant SaaS):
-- **Auth is a single shared key** — no users, orgs, or per-project keys
-- **No streaming capture** — `.stream()` calls on both SDKs pass through untraced
+- **No user accounts** — keys are set by the operator (`VEEKSHANA_API_KEYS` gives per-project isolation, but there is no signup/login/key-management UI)
 - **UI embeds the API key** (`NEXT_PUBLIC_*`) — fine self-hosted, needs a proxy for hosted cloud
 - **No TLS** — put a reverse proxy (Caddy/nginx) in front for anything non-local
-- **No automated test suite / CI yet** — verification has been end-to-end manual
 - **No retention/sampling controls** — every span is kept forever
 - Third-party host pricing (Groq/Together/...) not in the cost table — tokens tracked, cost `None`
+- TypeScript SDK is v0 — per-instance `instrument*(client)` patching, no `messages.stream()` helper yet
 
 **Bottom line:** deploy it today for yourself, your team, or a design partner on a VPS behind a reverse proxy. Don't open it to the public internet as a shared service until auth and TLS are in place.
 
-## 6. Roadmap
+## 6. Tests
 
-Streaming capture → PyPI/npm publish + CI → gateway/proxy mode (zero-code) → TypeScript SDK → multi-user auth → hosted cloud (the open-core business layer) → agent-behavior analytics (tool-failure rates, retry loops, cost per completed task).
+`tests/` is an offline end-to-end suite: real provider SDKs run against local mock Anthropic/OpenAI endpoints and a local Veekshana server — no network, no keys. `test_streaming.py` (SDK streaming capture), `test_gateway.py` (gateway mode incl. auth rejection), `test_ts_sdk.py` (TypeScript SDK trace tree). Each runs directly with `python tests/<name>.py`; CI runs them all on every push.
 
 ---
 

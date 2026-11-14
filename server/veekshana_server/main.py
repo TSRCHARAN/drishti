@@ -54,6 +54,11 @@ def _startup() -> None:
     init_db()
 
 
+from .gateway import router as _gateway_router  # noqa: E402  (needs API_KEYS defined above)
+
+app.include_router(_gateway_router)
+
+
 def get_db():
     db = SessionLocal()
     try:
