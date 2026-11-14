@@ -36,7 +36,7 @@ def _parse_api_keys() -> dict[str, str]:
 
 API_KEYS = _parse_api_keys()
 
-app = FastAPI(title="Veekshana", version="0.1.0")
+app = FastAPI(title="Veekshana", version="0.2.0")
 
 # The web UI (localhost:3000 in dev) calls this API from the browser.
 # Self-hosters can widen/narrow this with VEEKSHANA_CORS_ORIGINS (comma-separated).
@@ -78,7 +78,7 @@ def auth_project(x_api_key: Optional[str] = Header(default=None)) -> str:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "veekshana", "version": "0.1.0"}
+    return {"status": "ok", "service": "veekshana", "version": "0.2.0"}
 
 
 def _insert_spans(db: Session, spans: list[SpanIn], project: str) -> int:
