@@ -8,9 +8,14 @@ Usage:
     veekshana-eval --limit 5
     veekshana-eval --mock          # no API key needed: deterministic mock judge
 
-Judge model: $VEEKSHANA_EVAL_MODEL (default claude-opus-5-5) via the Anthropic SDK.
-With no ANTHROPIC_API_KEY/credentials or --mock, a deterministic mock judge runs
-instead, so the pipeline works out of the box.
+The judge runs on YOUR key, any provider:
+- ANTHROPIC_API_KEY set  -> Anthropic judge (default model claude-opus-5-5)
+- OPENAI_API_KEY set     -> OpenAI-compatible judge (default model gpt-4o);
+  with OPENAI_BASE_URL this covers Groq, Together, Ollama, OpenRouter, etc.
+- neither / --mock       -> deterministic mock judge, no key needed
+
+Override with $VEEKSHANA_EVAL_PROVIDER (anthropic|openai|mock) and
+$VEEKSHANA_EVAL_MODEL.
 """
 
 from __future__ import annotations
@@ -27,7 +32,7 @@ from sqlalchemy import select
 
 from .db import ScoreRow, SessionLocal, SpanRow, init_db
 
-JUDGE_MODEL = os.environ.get("VEEKSHANA_EVAL_MODEL", "claude-opus-5-5")
+DEFAULT_MODELS = {"anthropic": "claude-opus-5-5", "openai": "gpt-4o"}
 SCORE_NAME = "task_completion"
 
 JUDGE_SYSTEM = """You are an evaluation judge for AI agent traces. You are given one trace:
@@ -88,20 +93,23 @@ def _mock_judge(digest: str) -> dict:
     return {"score": round(score, 2), "reasoning": reasoning}
 
 
-def _llm_judge(digest: str, criteria: str | None = None) -> dict:
-    from anthropic import Anthropic
+def _detect_provider() -> str:
+    """'anthropic' | 'openai' | 'mock': explicit override, else inferred from keys."""
+    explicit = os.environ.get("VEEKSHANA_EVAL_PROVIDER", "").strip().lower()
+    if explicit in ("anthropic", "openai", "mock"):
+        return explicit
+    if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+        return "anthropic"
+    if os.environ.get("OPENAI_API_KEY"):
+        return "openai"
+    return "mock"
 
-    system = JUDGE_SYSTEM + (CRITERIA_TEMPLATE.format(criteria=criteria) if criteria else "")
-    client = Anthropic()
-    response = client.messages.create(
-        model=JUDGE_MODEL,
-        max_tokens=2000,
-        system=system,
-        messages=[{"role": "user", "content": digest}],
-    )
-    if response.stop_reason == "refusal":
-        return {"score": 0.5, "reasoning": "Judge declined to evaluate this trace."}
-    text = "".join(block.text for block in response.content if block.type == "text")
+
+def _judge_model(provider: str) -> str:
+    return os.environ.get("VEEKSHANA_EVAL_MODEL") or DEFAULT_MODELS.get(provider, "")
+
+
+def _parse_verdict(text: str) -> dict:
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
         raise ValueError(f"judge returned no JSON: {text[:200]}")
@@ -112,15 +120,44 @@ def _llm_judge(digest: str, criteria: str | None = None) -> dict:
     }
 
 
-def _have_anthropic_credentials() -> bool:
-    if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"):
-        return True
-    try:
-        import anthropic  # noqa: F401
-    except ImportError:
-        return False
-    # OAuth profiles on disk also work; let the SDK try and fall back on failure.
-    return os.path.exists(os.path.expanduser("~/.config/anthropic"))
+def _anthropic_judge(digest: str, system: str, model: str) -> dict:
+    from anthropic import Anthropic
+
+    response = Anthropic().messages.create(
+        model=model,
+        max_tokens=2000,
+        system=system,
+        messages=[{"role": "user", "content": digest}],
+    )
+    if response.stop_reason == "refusal":
+        return {"score": 0.5, "reasoning": "Judge declined to evaluate this trace."}
+    text = "".join(block.text for block in response.content if block.type == "text")
+    return _parse_verdict(text)
+
+
+def _openai_judge(digest: str, system: str, model: str) -> dict:
+    """OpenAI SDK judge. With OPENAI_BASE_URL this also covers Groq, Together,
+    Ollama, OpenRouter, DeepSeek, Mistral, and other OpenAI-compatible hosts."""
+    from openai import OpenAI
+
+    response = OpenAI().chat.completions.create(
+        model=model,
+        max_tokens=2000,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": digest},
+        ],
+    )
+    text = response.choices[0].message.content or ""
+    return _parse_verdict(text)
+
+
+def _llm_judge(digest: str, criteria: str | None, provider: str) -> dict:
+    system = JUDGE_SYSTEM + (CRITERIA_TEMPLATE.format(criteria=criteria) if criteria else "")
+    model = _judge_model(provider)
+    if provider == "anthropic":
+        return _anthropic_judge(digest, system, model)
+    return _openai_judge(digest, system, model)
 
 
 def run_evals(limit: int = 20, mock: bool | None = None, criteria: str | None = None) -> None:
@@ -143,15 +180,16 @@ def run_evals(limit: int = 20, mock: bool | None = None, criteria: str | None = 
             print("No unscored traces found.")
             return
 
-        use_mock = mock if mock is not None else not _have_anthropic_credentials()
-        judge_name = "mock" if use_mock else JUDGE_MODEL
-        print(f"Scoring {len(trace_ids)} trace(s) with judge: {judge_name}")
+        provider = "mock" if mock else _detect_provider()
+        judge_name = "mock" if provider == "mock" else _judge_model(provider)
+        print(f"Scoring {len(trace_ids)} trace(s) with judge: {judge_name}"
+              + ("" if provider == "mock" else f" ({provider})"))
 
         for tid in trace_ids:
             spans = db.execute(select(SpanRow).where(SpanRow.trace_id == tid)).scalars().all()
             digest = _trace_digest(spans)
             try:
-                verdict = _mock_judge(digest) if use_mock else _llm_judge(digest, criteria)
+                verdict = _mock_judge(digest) if provider == "mock" else _llm_judge(digest, criteria, provider)
             except Exception as exc:
                 print(f"  {tid[:8]}… judge failed: {exc}")
                 continue

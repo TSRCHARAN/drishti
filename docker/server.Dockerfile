@@ -7,7 +7,8 @@ WORKDIR /app
 # The server reuses the SDK's pricing table, so install both packages.
 COPY sdk-python/ sdk-python/
 COPY server/ server/
-RUN pip install --no-cache-dir ./sdk-python ./server
+# [evals] bundles the anthropic + openai SDKs so the LLM judge works in-container.
+RUN pip install --no-cache-dir ./sdk-python "./server[evals]"
 
 ENV VEEKSHANA_SERVER_HOST=0.0.0.0 \
     VEEKSHANA_SERVER_PORT=8787 \

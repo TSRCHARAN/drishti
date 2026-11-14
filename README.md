@@ -37,7 +37,7 @@ You shipped an AI agent. Now you need to know:
 docker compose up
 ```
 
-That's it: API at `http://localhost:8787`, web UI at `http://localhost:3000`, SQLite on a Docker volume (Postgres: see `docker-compose.yml`). Default API key is `dev-key` — override with `VEEKSHANA_API_KEY=... docker compose up --build`.
+That's it: API at `http://localhost:8787`, web UI at `http://localhost:3000`, SQLite on a Docker volume (Postgres: see `docker-compose.yml`). Default API key is `dev-key` — this is **Veekshana's own auth secret** (like a database password, not an AI vendor key); you choose it yourself via `VEEKSHANA_API_KEY=... docker compose up --build`.
 
 <details>
 <summary>Without Docker</summary>
@@ -89,11 +89,11 @@ Prefer raw JSON? `curl http://localhost:8787/api/v1/traces -H "x-api-key: dev-ke
 ### 4. Score your traces (evals)
 
 ```bash
-docker compose exec server veekshana-eval        # LLM-as-judge (set ANTHROPIC_API_KEY)
+docker compose exec server veekshana-eval        # LLM-as-judge on your own key
 docker compose exec server veekshana-eval --mock # deterministic mock judge, no key needed
 ```
 
-Each trace gets a `task_completion` score with reasoning, shown on the dashboard and trace pages, where you can also annotate runs 👍/👎 by hand. Judge model: `VEEKSHANA_EVAL_MODEL` (default `claude-opus-5-5`).
+Each trace gets a `task_completion` score with reasoning, shown on the dashboard and trace pages, where you can also annotate runs 👍/👎 by hand.
 
 **Describe what your agent is supposed to do**, and the judge scores against *your* definition of correct:
 
@@ -101,7 +101,7 @@ Each trace gets a `task_completion` score with reasoning, shown on the dashboard
 veekshana-eval --criteria "Drafts polite payment reminders, never threatens, always includes the exact overdue amount."
 ```
 
-The judge runs on **your** API key (any Claude model) — or the keyless mock judge. Veekshana itself has no AI vendor dependency.
+The judge runs on **your own key, any provider**: set `ANTHROPIC_API_KEY` (Claude judge, default `claude-opus-5-5`) or `OPENAI_API_KEY` (default `gpt-4o`; add `OPENAI_BASE_URL` to judge with Groq, Together, Ollama, OpenRouter, etc.). Pick explicitly with `VEEKSHANA_EVAL_PROVIDER` / `VEEKSHANA_EVAL_MODEL`. No key at all? The mock judge keeps the pipeline working. Veekshana itself has no AI vendor dependency.
 
 ### 5. Multiple teams, one server
 

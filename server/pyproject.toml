@@ -35,7 +35,7 @@ Issues = "https://github.com/TSRCHARAN/veekshana/issues"
 
 [project.optional-dependencies]
 postgres = ["psycopg2-binary>=2.9"]
-evals = ["anthropic>=0.30"]
+evals = ["anthropic>=0.30", "openai>=1.0"]
 
 [project.scripts]
 veekshana-server = "veekshana_server.main:run"

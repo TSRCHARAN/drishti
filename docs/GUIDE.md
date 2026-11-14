@@ -116,11 +116,22 @@ Veekshana accepts OTLP/HTTP in protobuf and JSON and maps the GenAI semantic con
 ### 3.5 Evals
 
 ```bash
-docker compose exec server veekshana-eval          # real judge; needs ANTHROPIC_API_KEY
+docker compose exec server veekshana-eval          # real judge; runs on your own key
 docker compose exec server veekshana-eval --mock   # deterministic mock, no key
 ```
 
-The judge reads each unscored trace (task, final output, steps, errors) and writes a `task_completion` score (0–1) with one-line reasoning. Configure the judge model with `VEEKSHANA_EVAL_MODEL` (default `claude-opus-5-5`; `claude-haiku-5-5` is the budget option). Human annotations from the UI land in the same scores table as `human_review`.
+The judge reads each unscored trace (task, final output, steps, errors) and writes a `task_completion` score (0–1) with one-line reasoning. Human annotations from the UI land in the same scores table as `human_review`.
+
+**The judge works with any provider, on your own key.** Provider is inferred from the environment, or set explicitly:
+
+| Env | Effect |
+|---|---|
+| `ANTHROPIC_API_KEY` | Claude judge — default model `claude-opus-5-5` (`claude-haiku-5-5` is the budget option) |
+| `OPENAI_API_KEY` | OpenAI-compatible judge — default model `gpt-4o` |
+| `OPENAI_API_KEY` + `OPENAI_BASE_URL` | Judge on Groq, Together, Ollama, OpenRouter, DeepSeek, Mistral, … |
+| `VEEKSHANA_EVAL_PROVIDER` | Force `anthropic`, `openai`, or `mock` |
+| `VEEKSHANA_EVAL_MODEL` | Override the judge model for either provider |
+| *(nothing)* or `--mock` | Deterministic mock judge — zero keys, pipeline still works |
 
 **Describe what your agent is supposed to do**, and the judge scores against *your* definition of correct, not a generic one:
 
@@ -129,7 +140,7 @@ veekshana-eval --criteria "The agent drafts polite payment reminders in formal E
 # or: VEEKSHANA_EVAL_CRITERIA="..." veekshana-eval
 ```
 
-Keys: **you** bring the LLM for judging (your `ANTHROPIC_API_KEY`), or use `--mock` — Veekshana itself needs no AI vendor account.
+Keys: **you** bring the LLM for judging, from whichever provider you already use — Veekshana itself needs no AI vendor account. (Note: this key powers the *judge*; the `x-api-key`/`dev-key` used by the SDK and UI is Veekshana's own auth secret, unrelated to AI vendors.)
 
 ### 3.5b Projects (multi-team groundwork)
 
