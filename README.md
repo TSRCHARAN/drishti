@@ -61,6 +61,8 @@ pip install -e sdk-python
 ```python
 import veekshana
 
+# api_key must match the key your Veekshana server was started with
+# (default: dev-key — see step 1)
 veekshana.init(host="http://localhost:8787", api_key="dev-key")
 
 @veekshana.observe()
